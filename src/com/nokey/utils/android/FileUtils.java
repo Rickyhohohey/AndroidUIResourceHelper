@@ -54,11 +54,11 @@ public class FileUtils {
 	/**
 	 * 根据后缀将文件分组
 	 * 
-	 * @param files
-	 * @param suffixs
+	 * @param files 文件
+	 * @param suffixs 后缀名
 	 * @return key为文件名，value为对应文件列表的Map
 	 */
-	public static Map<String, List<File>> groupFilesBySuffix(File[] files, String[] suffixs) {
+	public static Map<String, List<File>> groupFilesBySuffix(List<File> files, String[] suffixs) {
 		Map<String, List<File>> grouped = new HashMap<>();
 		for (File f : files) {
 			String realName = f.getName();
@@ -83,7 +83,7 @@ public class FileUtils {
 		try {
 			java.awt.Desktop.getDesktop().open(file);
 		} catch (IOException e) {
-			ToolsUtils.showMsgDialog("打开文件夹发生异常。");
+			ToolUtils.showMsgDialog("打开文件夹发生异常。");
 		}
 	}
 

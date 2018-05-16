@@ -7,6 +7,12 @@ import java.awt.Dimension;
 import java.awt.EventQueue;
 import java.awt.GridLayout;
 import java.awt.Rectangle;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.Transferable;
+import java.awt.dnd.DnDConstants;
+import java.awt.dnd.DropTarget;
+import java.awt.dnd.DropTargetAdapter;
+import java.awt.dnd.DropTargetDropEvent;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ComponentAdapter;
@@ -16,6 +22,7 @@ import java.awt.event.ItemListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -78,8 +85,43 @@ public class MainFrame extends JFrame implements ActionListener {
 		});
 		initLeftPanel();
 		initCodeOutput();
-
+		initDrag();
 	}
+	
+	public void initDrag()
+    {
+        new DropTarget(mLeftPanel, DnDConstants.ACTION_COPY_OR_MOVE, new DropTargetAdapter()
+        {
+            @SuppressWarnings("unchecked")
+			@Override
+            public void drop(DropTargetDropEvent dtde)
+            {
+                try
+                {
+                    if (dtde.isDataFlavorSupported(DataFlavor.javaFileListFlavor))//如果拖入的文件格式受支持
+                    {
+                        dtde.acceptDrop(DnDConstants.ACTION_COPY_OR_MOVE);//接收拖拽来的数据
+                        Transferable tr = dtde.getTransferable();
+						Object obj = tr.getTransferData(DataFlavor.javaFileListFlavor);
+						if (obj != null) {
+							List<File> files = (List<File>) obj;
+							putFilesToView(files);
+						}
+                        
+                        dtde.dropComplete(true);//指示拖拽操作已完成
+                    }
+                    else
+                    {
+                        dtde.rejectDrop();//否则拒绝拖拽来的数据
+                    }
+                }
+                catch (Exception e)
+                {
+                    e.printStackTrace();
+                }
+            }
+        });
+    }
 
 	private JLabel mGenSuffixCodeLabel;
 	private static final String STRING_GEN_CODE_LABEL_2 = "代码: 主题style_2";
@@ -410,7 +452,7 @@ public class MainFrame extends JFrame implements ActionListener {
 		@Override
 		public void run() {
 			if (mFilesMap == null || mFilesMap.isEmpty() || mDestDir == null) {
-				ToolsUtils.showMsgDialog("请选择输入文件和输出文件夹。");
+				ToolUtils.showMsgDialog("请选择输入文件和输出文件夹。(可直接拖拽文件到左侧窗口空白处）");
 			} else {
 				StringBuilder strAttr = new StringBuilder();
 				StringBuilder strStyle1 = new StringBuilder();
@@ -419,12 +461,12 @@ public class MainFrame extends JFrame implements ActionListener {
 
 					JTextField newNameText = mRenameTextFields.get(entry.getKey());
 					if (newNameText != null) {
-						String text = ToolsUtils.getTrimText(newNameText.getText());
+						String text = ToolUtils.getTrimText(newNameText.getText());
 						if (!text.isEmpty()) {
 							String newNameSuffix = "";
 							if (mStyleSuffixCb.isSelected()) {
 								mStyle2CodeTextArea.setText(strStyle2.toString());
-								newNameSuffix = ToolsUtils.getTrimText(mStyleSuffixText.getText());
+								newNameSuffix = ToolUtils.getTrimText(mStyleSuffixText.getText());
 							}
 							copyAndRenameFiles(entry.getValue(), text + newNameSuffix);
 
@@ -443,7 +485,7 @@ public class MainFrame extends JFrame implements ActionListener {
 				mStyle1CodeTextArea.setText(strStyle1.toString());
 				if (mStyleSuffixCb.isSelected()) {
 					mStyle2CodeTextArea.setText(strStyle2.toString());
-					String text = ToolsUtils.getTrimText(mStyleSuffixText.getText());
+					String text = ToolUtils.getTrimText(mStyleSuffixText.getText());
 					if (!text.isEmpty()) {
 						mGenSuffixCodeLabel
 								.setText(STRING_GEN_CODE_LABEL_2 + "(后缀:" + mStyleSuffixText.getText() + ")");
@@ -497,17 +539,20 @@ public class MainFrame extends JFrame implements ActionListener {
 		mScrollContentPanel.removeAll();
 		mFilesMap.clear();
 	}
+	
+	private void putFilesToView(List<File> files){
+		if (files != null && files.size() > 0) {
+			clearForResourceTemp();
+			mFilesMap = FileUtils.groupFilesBySuffix(files, getSuffixs());
+			buildItemPanels(mFilesMap);
+		}
+	}
 
 	@Override
 	public void actionPerformed(ActionEvent e) {
 		switch (e.getActionCommand()) {
 		case CMD_OPEN_FROM_FILE:
-			File[] files = FileUtils.selectFilesAndDir();
-			if (files != null && files.length > 0) {
-				clearForResourceTemp();
-				mFilesMap = FileUtils.groupFilesBySuffix(files, getSuffixs());
-				buildItemPanels(mFilesMap);
-			}
+			putFilesToView(Arrays.asList(FileUtils.selectFilesAndDir()));
 			break;
 		case CMD_OPEN_TO_FILE:
 			mDestDir = FileUtils.selectDir();
@@ -523,7 +568,7 @@ public class MainFrame extends JFrame implements ActionListener {
 			if (mDestDir != null) {
 				FileUtils.openFolder(mDestDir);
 			} else {
-				ToolsUtils.showMsgDialog("未选择目标文件夹。");
+				ToolUtils.showMsgDialog("未选择目标文件夹。");
 			}
 			break;
 		case CMD_CLEAR:
